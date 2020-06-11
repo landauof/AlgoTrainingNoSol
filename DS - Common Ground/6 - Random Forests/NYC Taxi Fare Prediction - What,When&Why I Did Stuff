@@ -1,0 +1,99 @@
+What I did (by order):
+
+1. read the data and split it to train\val
+2. looked at the types and values of the traninig data
+    * Saw trips with 0/100+ passengers 
+    * Saw lats/longs values that are outside of NYC)
+    * Some prices are negative
+3. Watched some dots on a map
+    * Saw that some dots are underwater
+4. Search for missing values in the data
+    * There are Nans at some of the columns (dropoff location)
+5. N/A all values (only at training DF for now) that are outside of NYC using borders from the internet for later
+6. Replaced trips with 0 passengers to N/A pasengers for later
+7. replace N/A with medians
+8. Run experiment for a baseline (multiply models with multiple hyperparameters - EXPERIENCING WITH MULTIPROCESSING
+ * Best models were XGB (RMSE=4.688), RF (4.688), LGBM (4.824) and the worst was LR (8.384)
+9. Plot histogram, heatmap, correlations
+    * No clear evidence of something
+10. Added features:
+    * distance of drive by air
+    * day of drive (from pickup date) 
+    * is weekend drive
+    * hour of drive
+    * is night drive
+11. Revisiting plots and correlations
+    * High corr between aerial distance and price
+12. Ran another experiment:
+    * RF - 4.585
+    * LGBM - 4.626
+    * XGB - 4.526
+13. Ran mini experiment (100000) to see if the results were similar to the full on, in order to be able to run mini experiments:
+    * RF - 4.965
+    * LGBM - 4.697
+    * XGB - 4.847
+14. Looking at the drives that were predicted badly- they usually have higher price (median of 49 instead of ~9). HOWEVER, I looked at examples with error>20 and relatively to the price
+    * Need to check by % but need to re-run experiment 2 for that
+15. For hyper parameter search- will work with small portion of the data (~0.5M samples)
+16. Using Hyperopt for Bayesian hyperparameters optimization
+17. Noticed that I didn't treat negative fares eventough they were noticed at level 2 >:( , now added to the outliers
+18. New feature: Year of drive
+19. Further examining day, hour and year
+    * Looks like day is bad, hour is ok and year is good
+20. Running hyper param search for RF and LightGBM using ~0.5M samples and the new feature
+    * STOPPED because LightGBM is also pretty slow when using these numbers
+21. Running super-mini experiment with ~5.5K (for speed...) with extended LightGBM search space, added catboost and good old RF and XGB:
+    * Spent alot of time stopping, restarting and changing params because I tohught it takes too much tme to run...
+    * Left it for a night and it still runs, STOPPED because this is too much for me
+22. Same as 20 but only with fast models (cat and rf):
+    * RF - 5.774
+    * CAT - 5.205
+23. Decided to focus on CAT for now because it had a good RMSE/Speed combo
+24. Implemented multiproccessed version of parsing date: Now runs in ~2min instead of 4
+25. New feature: month of drive (maybe during summer/vacation the prices are higher)
+    * Looks pretty good
+26. Running hyper params search with ~0.5M samples on CAT:
+    * 'depth': 5.0,'iterations': 937.0,'l2_leaf_reg': 7.418620452682315,'learning_rate': 0.18234979789852296
+    * RMSE = 4.446
+27. Looked at "decsribe()" and plots of samples with more than 25% error and compared to the rest
+    * No big difference
+    * At some point, if I don't restart the notebook, all plots that are not seaborn are empty
+28. Examining feature importance:
+    * Not relative - need to look with propotion to the range of the feature's values
+    * Aerial distance is very indicative
+29. Try running Bayesian search on CAT but this time with removing the samples with outliers
+    * Tried to implement that the outliers will be removed only from train and replaced with median at validation but took alot of time and didn't work so FOR NOW removes outliers from both...
+    * RMSE = 3.921 - about 15% improvement...
+30. Setting the test set by filling outliers with median values (except for target column), adding and removing the relevant features...
+    * Sanity check: the outliers part of the train data were 2.22%, 0.35% and >0.01% for different kind of outliers. The corresponding rates in the test set are 2.32%, 0.35% and >0.01%. Different, but very similar
+    * Sanity check 2: Train and test sets have the same columns
+31. Applying chosen CAT and params on the test set using a small sample (0.1%) of train & test to make sure things look alright
+    * RMSE = 5.466
+    * Re-run after changing the random_seed to see if the results remain similar: RMSE = 4.941 (about 10% differnce)
+32. Same as previous stage but using larger portion (1%) of the data
+    * RMSE = 4.683
+    * Re-run with different random seed: 4.716 (<1% - reasonable difference)
+    * This is the result we expect to get using the full datasets
+33. Applying the model using full datasets
+    * RMSE = 19.73, which is much more than what expected
+34. Trying to figure out the difference in the RMSE
+    * Using 10% of the data results in RMSE = 4.452, 4.444, 4.493 (different seeds)
+    * Using 30%: RMSE = 5, 4.976, 4.47
+    * Using 50%: RSMSE = 19.33
+    * Using 70%: RMSE = 20.957
+35. Although using different samplings of 10-30% of the data got results that are close to the expected ones, using larger portions did not. I think this happens because the data didn't represent the full dataset well. In retrospect:
+    * Should have made sure the distributions of the data were similar in the train and test sets
+    * Should have made sure the distributions of the data were similar in the train and sampled train sets
+36. Looking at the distriution of the fares at test and train sets.
+    * Looks similar in general, but...
+    * Noticed that there are some suspiciously high prices in the test set (some close to 10K$)
+37. Decided that fares>750$ are not real prices and dropped them
+    * This had no impact on the train set because the highest value is ~500$
+38. Full experiment on the full datasets:
+    * RMSE = 4.367
+    * Got a similar score to what was expected
+
+
+Stuff that should be done:
+Remove dots that are in the water (look for a way to use Google Earth's polygon
+add ranking of locations based on wealth/some other feature and use it for the pickup location
