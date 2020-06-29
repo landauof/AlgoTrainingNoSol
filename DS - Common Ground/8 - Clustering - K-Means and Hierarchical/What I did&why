@@ -1,0 +1,46 @@
+
+
+1. Parse the target column as requested
+2. Read the data and dropped columns that instructions said should be dropped
+3. Looked at the names of columns & their meaning using reddit and stuff (e.g. reddit.com/r/FIFA/comments/3znwub/beginners_guide_work_rates/)
+    * Some features are irrelevant (club, date of birth, full name...)
+    * Some feature contained in others (international_reputation gives bonuses to stuff...)
+    * Some features need parsing (work_rate, player_tags, body_type...)
+4. Removed features that feels irrelevant or encsulated in other features
+5. Parsed features that needed to be parsed:
+    * tags, traits, body type...
+6 Turned body_type and strong foot ot numeric:
+    * Filled special body types using "domain knowledge..."
+7. Handle missing values:
+    * national jersey shirt: since most of the players don't play in their national teams, decided to drop this feature
+    * team jersy shirt: if a player has no team, it means he appears only on national team-> use this number
+    * release clause: filled with 0 because it should be 0 if not stated otherwise (LAWYERED.)
+8. Turned float cols to ints (after making sure there is no data lost) and reindex df using URLs
+
+At this point, I think the most indicative features will be the numeric scores (defending, shooting...), the scores per position (rw,lw...) and the binary tags (#Tackling...)
+
+9. Tried K-Means with all (115) features
+    * Used PCA to plot results and it looks pretty good
+    * used tsne to plot results and it looks pretty bad
+    * silhouette_score = 0.1596 (however, not sure yet this is the most fitting score)
+10. Same as 9 but using mean/std normalization
+    * Used PCA to plot results and it looks pretty good
+    * used tsne to plot results and it looks pretty bad
+    * silhouette_score = 0.1637 (however, not sure yet this is the most fitting score)
+11. Build different datasets for experimenting:
+    * Full df - PCA
+    * Full df - t-SNE
+    * tags only
+    * traits only
+    * position score only
+12. After some online digging, found out that each position has a unique coefficient multiplier table
+    * After calculating them using FIFA19's formulas, saw that I have the ones of 2020 as features and that they are not a perfect fit
+13. Using different datasets (without dimentional reduction at the clustering)
+    * Using position scores - similar to the full df results (sil 0.390)
+    * tags - put almost everyone in the same cluster (sil 0.956)
+    * traits - put almost everyont in the same cluster (sil 0.519)
+    * general info - kind of like position scores but not as good (sil 0.143)
+    
+At this point, I think the tags and traits are problematic because they appear only with famous players (EA being lazy). In addition, looking at the data, relatively good players (regardless of their natural position) appears togheter. I think this happens because their scores are better than bad players at their natural position (e.g. a world-class defender can play as a relatively good midfielder, so he is similar to regular midfielder)
+
+14. Try normalizing the values of the position scores by dividing them in the overall score
