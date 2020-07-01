@@ -44,3 +44,31 @@ At this point, I think the most indicative features will be the numeric scores (
 At this point, I think the tags and traits are problematic because they appear only with famous players (EA being lazy). In addition, looking at the data, relatively good players (regardless of their natural position) appears togheter. I think this happens because their scores are better than bad players at their natural position (e.g. a world-class defender can play as a relatively good midfielder, so he is similar to regular midfielder)
 
 14. Try normalizing the values of the position scores by dividing them in the overall score
+15. Run KMeans with position scores
+    * Graph looks good (and different than before), (sil 0.547)
+
+
+
+16. Got and parsed labels for 15%
+    * Current adjusted AMI score (for the 15%) = 0.638
+    * accuracy score (for the 15%) =  0.876
+    * Looking at the confusion matrix, the main issue is that I predict MD too often
+17. Tried using DBSCAN instead of kmeans (similar configuration as in 15)
+    * Results look not so good
+        ** It is kind of expected because the data is very "close" (there are no clear clusters because the players can be good at more than one position)
+        ** Durther, the algorithm calculated the amount of clusters on its own, and can leave outliers out, which is not our scenario
+18. Tried Spectral Clustering (like 15)
+    * Got similar results to KMeans (slightly different tough) (sil 0.535)
+    * When adding evaluation using the labeled data got acc=0.853 with the same issue of 16 but slightly worse
+19. Trying self learning for shits and giggles: sklearn's LabelPropagation (using rbf and knn)
+    * Bad results (knn wont run, rbf gets only two classes)
+20. Implemented self training and tried a decision tree using max_depth=5, confidence threshold=0.75
+    * Accuracy~0.93 (using 0.5 of the labeled for validation and the rest as initial labeled training set)
+    * Seems like I still predict MD too often
+
+At this point, the results look fairly nice. Altough I want to keep trying more methods, I think the results won't improve by much
+FUTURE DIRECTIONS:
+    - Give another shot to different clustering methods at part A
+    - Try different models for self training
+    - Try different semi-supervised methods (M-training...)
+    - Look for features that better distinguish between ST and B (looking at features that are not the position scores)
