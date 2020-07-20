@@ -1,0 +1,68 @@
+1. Examined data:
+    * Images...
+    * Single channel (not RGB)
+    * Two classes - normal and pneumonia (which can be divided to two subclasses: virus and bacteria)
+    * Train set (3875/1341) val set (8/8) test set ()
+        * Used the division above for my train/val/test sets
+
+In my opinion, telling a sick patient that he is healthy (fp) is much worse than telling a healthy one that he is sick (fn) (client should determine). Therefore, might use a relatively high threshold for determining if one is healthy (NOTE: 0=sick, 1=healthy).
+
+2. Tried to run VGG16:
+    * resized images to 256*256 (input for the vgg)
+    * used mean/std, following vgg's assumptions
+    * replaced last layer with my own (2 outputs) and a softmax layer
+    * Tried to use Ignite but failed miserably
+3. Used VGG11:
+    * first three dots as above
+    * replaced for faster run
+        * using 10 epochs takes about 20 min to run
+4. Watching some of the images:
+    * They come in different sizes and shapes (sometimes the longer axis is X and sometimes Y,....) and sizes
+    * The 'R' is writtten in different sizes and appear in different relative locations (altough always on the right size)
+    * The body comes in differnt postures (tilted to one side, arms up/down, visible jaw...)
+
+I think a good transform order will be
+    a. crop about 0.1 of each size of the image  on the left and right (remove arms)
+    b. crop about 0.2 of the image on the upper and lower size (remove head and liver)
+    c. resize to the size requested by the net
+Another option is to create augmentated data using random rotation (not 180 ones but around 30 degrees to each size) or crop
+
+5. Looking at the results
+    * Both train and val performance looks pretty good
+    * Training loss decreases but slow and unsteadily
+    * Training loss stops improving after ~2.7k steps (or ~7.5k, but it takes time)
+    * validation set reaches 100% accuracy pretty often
+
+A good option might be re-splitting train and val so val's performance will be more informative and the model will generaliz better. On the other hand, I like sticking to Kaggle's splitting so...
+Another direction to check is different optimizer, and while on that, play with the hyperparams a bit.
+
+6. Re-run with image rotation (15) and crop (h=0.6,w=0.8) and 5 epochs (for faster results)
+    * Results look worse than before but the plots make more sense
+
+7. Changing first layer to get a single-channel data (from now on, will train all layers)
+    * After removing the forward pass over val at each iteration, much faster running time
+    * Training loss decreases over time
+    * Maybe crushd after ~ 5K iterations
+    * High performance on both sick (0.97) and healty (0.94), high AUC and stuff
+    * Train and Val have pretty close performance
+
+8. Same as before but using vgg16
+    * ~2 hours to run 50 epochs
+    * High performance (0.98 sick, 0.97 healthy after 30 epochs)
+    * Looks better than before
+9. Tried Optuna
+    * Searched for learning rate and momentum (also weight decay but I made a mistake so it didn't include this in the iterations)
+    * LR = 0.005612 MO = 0.630581
+
+10. Running full 50 iterations with chosen params
+11. Using trained model and threshold for classification test set
+    * acc=0.9
+
+TODO:
+Look at classes that were classified wrong (DONE?)
+Use augmentations for enlarging dataset (DONE)
+Use random flip (DONE)
+add weights to CrossEntropyLoss (TODO if want, have pretty good results regardless)
+split train+val to two somewhat equal datasets (DONE)
+Optimize hyper-params (DONE)
+Try ADAM (TODO)
