@@ -1,0 +1,83 @@
+
+1. viewed numeric value's mean, std and stuff
+    * data has 487680 record
+    * 3810 robot movements
+    * Each robot movement contains 10 different time serieses
+    * Each time series is constructed using 128 samples
+    * No Nas
+    
+    * -1< orientation_X, orientation_Y, orientation_Z <1 in theory
+    * -0.162830 <= orientation_Z <= 0.155710
+    * hard to tell if some speed/acc values are abnormal with comparison to expected values because units are not specified
+2. viewed amount of serieses per surface
+    * hard_tiles is very rare, carpet is also uncommon
+    * tiled, woord, soft_pvc and concrete are more common
+    * Possible connections:
+        * soft_tiles, tiled, hard_tiles_large_space, hard_tiles
+        * concrete, fine_concrete
+3. try a small net (rnn->linear->softmax)
+    * just to see some results (got about 1.94, which is not much better than random)
+4. looked at some examples (all serieses per example)
+    * velocities and accelerations look repetative (visible patterns)
+    * orientations sometimes have sin-like patterns and sometimes not (less visible)
+5. looked at the mean values of all features per class:
+    * mean orientations and angular velocity Z and Y are different on different scales (and looks similar throughout the measurements)
+    * other velocities and accelerations have different patterns among surfaces
+6. following http://karpathy.github.io/2019/04/25/recipe/ a bit. Made sure I can overfit to the train data
+
+At some point, saw that nn returns 4 for all predictions, will add weights to try to solve
+
+7. added weights with sizes relative to mean (count-mean ^ -1)
+    * Using Cnn (1280->1024) -> ReLU (1024->9) -> Softmax
+    * accuracy = 0.122
+    * predicts 2,7 for all... 
+8. Added FFT and stuff and changed to a more "sequental driven" model: rnn*5 (21->64) -> cnn (64->10) -> softmax
+    * still underfits (classes 6,7)
+9. While still being unable to make the NN good, tried to use a non-temporal related model
+    * Features include mean,min,max,std of all above columns (phi,theta,psi, fft stuff, anything but orientation columns)
+    * RandomForest with default hyper-params and 10FCV
+    * accuracy = 0.8
+    * 5% on the small class (21 samples)
+10. Seeing that I success more using non-emporal data, I tried building multiple CNNs and run them - they wlways return a single class
+11. Moving forward with the more successful attitude, Trying XGBoost with Optuna hyper-param optimization
+    * XGB (default params) performs better than RF (accuracy=0.87), the main issue is still class with less samples
+12. Same as 11 but new features: idx of the max value of the series (the location of the max value)
+    * accuracy of 0.865
+13. Using FFT, aggregation feautres and XGBoost with optimized hyper parameters:
+    * test accuracy of 0.519
+
+Two current issues:
+    a. relatively low performance for classes with less samples
+    b. low test score comparing to val score
+    
+14. Trying to solve b, dropping location related features (x,y,z...) to see if I get similar results on val and test
+    * val-> 0.56
+    * test->0.43
+    * well shit
+
+15. Reviwing my feautres:
+    * extracting Euler transforamtion to a function
+    * adding features: l2 norms for velocity and acceleration
+    * using fft only on signals that look like might be repetative looking at the mean value per class (vel_(X/Y), acc_(X/Y/Z))
+    * added median to the aggregated features
+16. Quick recap and organizing stuff in my head:
+    * current val score with default XGB is 0.88 (but who cares?)
+    * top 8 features (top 11 out of 20) are location related (maybe they have different distributions on test?)
+    * when leaving original orintation (and euler) features we get 0.91 accuracy and top 19/20 feature are orientation related
+    * When using the above on test set got 0.64 (a surprise, to be sure, but a welcomed one)
+    * When dropping location related features, got 0.53 val and 0.46 test (pretty close I guess)
+    
+So far, it looks like using loaction related features improves val and test by alot. Current issues are still high difference between test and val scores, as well as low accuracy on rare classes
+
+17. Trying to tackle the second issue, oversampling using SMOTE:
+    * val score is 0.95 (and impossibely high accuracy on the once-rare classes, but it is expected)
+    * test score is 0.622 which is slightly less than without oversampling
+    * maybe that is not the issue in the test set/the distribution of the minority classes is very different in the test set (compared to the train)
+18. In order to tackle the first issue, and after seeing that group_id was given in order to allow more "CV strategies", looking into this feature:
+    * Each group has a single surface
+    * class 3 (minority) have a single group (with 21 serieses)
+19. Merged serieses from the same group to a single series based on L2 of velocities and locations
+20. Tried to generate 1000/75 examples of each surface:
+    * very high val score (mostly for 1000), very low test score
+    * phenomena occurs both with and without location related fetures
+    * sounds about right for 1000 examples because train and val probabliy looks similar
