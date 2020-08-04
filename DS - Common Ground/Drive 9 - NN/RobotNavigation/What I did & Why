@@ -81,3 +81,6 @@ So far, it looks like using loaction related features improves val and test by a
     * very high val score (mostly for 1000), very low test score
     * phenomena occurs both with and without location related fetures
     * sounds about right for 1000 examples because train and val probabliy looks similar
+21. Started to try KNN with DTW but takes too long so dropped it
+posibble features:
+* total distance (X,Y,Z and total)
